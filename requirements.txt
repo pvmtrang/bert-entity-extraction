@@ -1,0 +1,9 @@
+torch
+torchvision
+torchaudio
+tqdm
+joblib
+numpy
+pandas
+scikit-learn
+transformers

@@ -17,15 +17,18 @@ from model import EntityModel
 
 
 def process_data(data_path):
-    df = pd.read_csv(data_path, encoding="latin-1")
+    # default read_csv() would treat the word "none" as N/A -> add param to fix it
+    df = pd.read_csv(data_path, encoding="latin-1", keep_default_na=False, na_values=[''])
     df.loc[:, "Sentence #"] = df["Sentence #"].fillna(method="ffill")
 
     enc_pos = preprocessing.LabelEncoder()
     enc_tag = preprocessing.LabelEncoder()
-
+    
+    # fit_transfrom() to encode all POS and NER tag into number
     df.loc[:, "POS"] = enc_pos.fit_transform(df["POS"])
     df.loc[:, "Tag"] = enc_tag.fit_transform(df["Tag"])
 
+    # sentences = array(list(['Sentence', '1']), list(['Sentence', '2']))
     sentences = df.groupby("Sentence #")["Word"].apply(list).values
     pos = df.groupby("Sentence #")["POS"].apply(list).values
     tag = df.groupby("Sentence #")["Tag"].apply(list).values
@@ -34,7 +37,7 @@ def process_data(data_path):
 
 if __name__ == "__main__":
     sentences, pos, tag, enc_pos, enc_tag = process_data(config.TRAINING_FILE)
-    
+  
     meta_data = {
         "enc_pos": enc_pos,
         "enc_tag": enc_tag
@@ -42,7 +45,7 @@ if __name__ == "__main__":
 
     joblib.dump(meta_data, "meta.bin")
 
-    num_pos = len(list(enc_pos.classes_))
+    num_pos = len(list(enc_pos.classes_)) #tinh 2 cai nay de lam dim cho output lop final Linear to categorize pos and tag
     num_tag = len(list(enc_tag.classes_))
 
     (
@@ -53,6 +56,13 @@ if __name__ == "__main__":
         train_tag,
         test_tag
     ) = model_selection.train_test_split(sentences, pos, tag, random_state=42, test_size=0.1)
+
+    # print("train_sentence")
+    # print(train_sentences)
+    # print("train_pos")
+    # print (train_pos)
+    # print("train_tag")
+    # print(train_tag)
 
     train_dataset = dataset.EntityDataset(
         texts=train_sentences, pos=train_pos, tags=train_tag

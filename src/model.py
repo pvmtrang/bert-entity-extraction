@@ -28,6 +28,9 @@ class EntityModel(nn.Module):
         self.out_pos = nn.Linear(768, self.num_pos)
     
     def forward(self, ids, mask, token_type_ids, target_pos, target_tag):
+        # text = config.TOKENIZER.batch_decode(ids, skip_special_tokens=True)
+        # print(text)
+        
         o1, _ = self.bert(ids, attention_mask=mask, token_type_ids=token_type_ids)
 
         bo_tag = self.bert_drop_1(o1)
