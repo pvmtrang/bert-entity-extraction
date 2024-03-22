@@ -1,5 +1,6 @@
 import torch
 from tqdm import tqdm
+import config
 
 
 def train_fn(data_loader, model, optimizer, device, scheduler):
@@ -9,7 +10,7 @@ def train_fn(data_loader, model, optimizer, device, scheduler):
         for k, v in data.items():
             data[k] = v.to(device)
         optimizer.zero_grad()
-        _, _, loss = model(**data)
+        _, loss = model(**data)
         loss.backward()
         optimizer.step()
         scheduler.step()
@@ -23,6 +24,6 @@ def eval_fn(data_loader, model, device):
     for data in tqdm(data_loader, total=len(data_loader)):
         for k, v in data.items():
             data[k] = v.to(device)
-        _, _, loss = model(**data)
+        _, loss = model(**data)
         final_loss += loss.item()
     return final_loss / len(data_loader)

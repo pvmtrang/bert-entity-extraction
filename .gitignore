@@ -1,5 +1,5 @@
 .vscode/
-input/s
+input/
 *.bin
 *.csv
 *.jpg

@@ -16,72 +16,76 @@ import engine
 from model import EntityModel
 
 
-def process_data(data_path):
-    # default read_csv() would treat the word "none" as N/A -> add param to fix it
-    df = pd.read_csv(data_path, encoding="latin-1", keep_default_na=False, na_values=[''])
-    df.loc[:, "Sentence #"] = df["Sentence #"].fillna(method="ffill")
+def process_data(path): #read into a df and convert it into 2 lists: sentence, tag. and enc_tag
+    data = []
+    sentence_cnt = 0
+    with open(path, encoding="utf8") as file:
+        for line in file:
+            #print(line)
+            line = line.strip()
+            if not line: #empty line to separate two sentences
+                sentence_cnt += 1
+            else: 
+                line = line.split()
+                sentence_word = [sentence_cnt] #sentence_word = [sentence_#, word, tag]
+                if len(line) != 4 or line[1] != "_": #test
+                    #print(line)
+                    continue
+                else:
+                    sentence_word.extend([line[0], line[-1]])
+                    data.append(sentence_word)
+    df = pd.DataFrame(data, columns = ["Sentence #", "Word", "Tag"])
 
-    enc_pos = preprocessing.LabelEncoder()
+    #df = df.loc[:500] #test
+
+    #print("-- Set of Tags: " + " ".join(df['Tag'].unique()) + " -> " +str(df['Tag'].nunique()))
+
     enc_tag = preprocessing.LabelEncoder()
-    
-    # fit_transfrom() to encode all POS and NER tag into number
-    df.loc[:, "POS"] = enc_pos.fit_transform(df["POS"])
     df.loc[:, "Tag"] = enc_tag.fit_transform(df["Tag"])
 
-    # sentences = array(list(['Sentence', '1']), list(['Sentence', '2']))
     sentences = df.groupby("Sentence #")["Word"].apply(list).values
-    pos = df.groupby("Sentence #")["POS"].apply(list).values
     tag = df.groupby("Sentence #")["Tag"].apply(list).values
-    return sentences, pos, tag, enc_pos, enc_tag
+    return sentences, tag, enc_tag
 
 
 if __name__ == "__main__":
-    sentences, pos, tag, enc_pos, enc_tag = process_data(config.TRAINING_FILE)
-  
-    meta_data = {
-        "enc_pos": enc_pos,
-        "enc_tag": enc_tag
+    train_sentences, train_tag, train_enc_tag = process_data(config.TRAINING_FILE)
+    # print("done train set")
+    val_sentences, val_tag, val_enc_tag = process_data(config.VALIDATION_FILE)
+
+    # print("train_sentences = " + str(len(train_sentences)))
+    # print("val_sentences = " + str(len(val_sentences)))
+
+    meta_data = { #sua lai cai nay, 1 enc_tag thoi 
+        "train_enc_tag": train_enc_tag,
+        "val_enc_tag": val_enc_tag,
     }
+    joblib.dump(meta_data, config.META_DATA_PATH)
 
-    joblib.dump(meta_data, "meta.bin")
+    num_tag_train = len(list(train_enc_tag.classes_)) #du sao thi train total tag == val == test total tag
+    num_tag_val = len(list(val_enc_tag.classes_)) #du sao thi train total tag == val == test total tag
 
-    num_pos = len(list(enc_pos.classes_)) #tinh 2 cai nay de lam dim cho output lop final Linear to categorize pos and tag
-    num_tag = len(list(enc_tag.classes_))
-
-    (
-        train_sentences,
-        test_sentences,
-        train_pos,
-        test_pos,
-        train_tag,
-        test_tag
-    ) = model_selection.train_test_split(sentences, pos, tag, random_state=42, test_size=0.1)
-
-    # print("train_sentence")
-    # print(train_sentences)
-    # print("train_pos")
-    # print (train_pos)
-    # print("train_tag")
-    # print(train_tag)
+    if (num_tag_train != num_tag_val):
+        raise Exception("Number of tags in Train != Val OMG")
 
     train_dataset = dataset.EntityDataset(
-        texts=train_sentences, pos=train_pos, tags=train_tag
+        texts=train_sentences, tags=train_tag
     )
 
     train_data_loader = torch.utils.data.DataLoader(
-        train_dataset, batch_size=config.TRAIN_BATCH_SIZE, num_workers=4
+        train_dataset, batch_size=config.TRAIN_BATCH_SIZE, num_workers=4, shuffle = True
     )
 
     valid_dataset = dataset.EntityDataset(
-        texts=test_sentences, pos=test_pos, tags=test_tag
+        texts=val_sentences, tags=val_tag
     )
 
     valid_data_loader = torch.utils.data.DataLoader(
-        valid_dataset, batch_size=config.VALID_BATCH_SIZE, num_workers=1
+        valid_dataset, batch_size=config.VALID_BATCH_SIZE, num_workers=1, shuffle = True
     )
 
     device = torch.device("cuda")
-    model = EntityModel(num_tag=num_tag, num_pos=num_pos)
+    model = EntityModel(num_tag=num_tag_train)
     model.to(device)
 
     param_optimizer = list(model.named_parameters())
@@ -110,8 +114,8 @@ if __name__ == "__main__":
     best_loss = np.inf
     for epoch in range(config.EPOCHS):
         train_loss = engine.train_fn(train_data_loader, model, optimizer, device, scheduler)
-        test_loss = engine.eval_fn(valid_data_loader, model, device)
-        print(f"Train Loss = {train_loss} Valid Loss = {test_loss}")
-        if test_loss < best_loss:
+        val_loss = engine.eval_fn(valid_data_loader, model, device)
+        print(f"Train Loss = {train_loss} Valid Loss = {val_loss}")
+        if val_loss < best_loss:
             torch.save(model.state_dict(), config.MODEL_PATH)
-            best_loss = test_loss
+            best_loss = val_loss

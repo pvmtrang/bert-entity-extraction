@@ -2,46 +2,50 @@ import config
 import torch
 import transformers
 import torch.nn as nn
+import sklearn
+from sklearn.metrics import classification_report
 
 def loss_fn(output, target, mask, num_labels):
     lfn = nn.CrossEntropyLoss()
-    active_loss = mask.view(-1) == 1
-    active_logits = output.view(-1, num_labels)
-    active_labels = torch.where(
+    active_loss = mask.view(-1) == 1    #reshape into one 1_d array and which element is not the padding 0
+    active_logits = output.view(-1, num_labels) #divide into n columns wtf is this for
+    active_labels = torch.where(        #if not padding -> target, else -100.0
         active_loss,
         target.view(-1),
-        torch.tensor(lfn.ignore_index).type_as(target)
+        torch.tensor(lfn.ignore_index).type_as(target)  #-100.0
     )
+    
+    # print("\nloss_function active_labels")
+    # print(active_labels)
+    # print("loss_funtion active_labels shape: " + str(active_labels.shape)) #size 1280???
     loss = lfn(active_logits, active_labels)
     return loss
 
 
 class EntityModel(nn.Module):
-    def __init__(self, num_tag, num_pos):
+    def __init__(self, num_tag, num_pos = 0):
         super(EntityModel, self).__init__()
         self.num_tag = num_tag
-        self.num_pos = num_pos
         self.bert = transformers.BertModel.from_pretrained(config.BASE_MODEL_PATH,return_dict=False)
         self.bert_drop_1 = nn.Dropout(0.3)
-        self.bert_drop_2 = nn.Dropout(0.3)
-        self.out_tag = nn.Linear(768, self.num_tag)
-        self.out_pos = nn.Linear(768, self.num_pos)
+        self.out_tag = nn.Linear(768, self.num_tag) #768: the hidden size of bert base
+        if not config.USING_CONLL:
+            self.num_pos = num_pos
+            self.bert_drop_2 = nn.Dropout(0.3)
+            self.out_pos = nn.Linear(768, self.num_pos)
     
-    def forward(self, ids, mask, token_type_ids, target_pos, target_tag):
+    #token_type_ids: Sentence embedding: E_A, E_B...
+    def forward(self, ids, mask, token_type_ids, target_tag, target_pos = 0):
         # text = config.TOKENIZER.batch_decode(ids, skip_special_tokens=True)
         # print(text)
         
-        o1, _ = self.bert(ids, attention_mask=mask, token_type_ids=token_type_ids)
+        o1, _ = self.bert(ids, attention_mask=mask, token_type_ids=token_type_ids) #o1: embedding for each token
 
         bo_tag = self.bert_drop_1(o1)
-        bo_pos = self.bert_drop_2(o1)
-
         tag = self.out_tag(bo_tag)
-        pos = self.out_pos(bo_pos)
-
         loss_tag = loss_fn(tag, target_tag, mask, self.num_tag)
-        loss_pos = loss_fn(pos, target_pos, mask, self.num_pos)
+        
+        return tag, loss_tag
+            
 
-        loss = (loss_tag + loss_pos) / 2
-
-        return tag, pos, loss
+        
