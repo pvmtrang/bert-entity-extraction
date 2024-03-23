@@ -1,28 +1,53 @@
 import config
 import torch
+import pandas as pd
+from sklearn import preprocessing
+from torch.utils.data import Dataset
+
+def process_data(path, enc_tag): #read into a df and convert it into 2 lists: sentence, tag. and enc_tag
+    data = []
+    sentence_cnt = 0
+    with open(path, encoding="utf8") as file:
+        for line in file:
+            #print(line)
+            line = line.strip()
+            if not line: #empty line to separate two sentences
+                sentence_cnt += 1
+            else: 
+                line = line.split()
+                sentence_word = [sentence_cnt] #sentence_word = [sentence_#, word, tag]
+                if len(line) != 4 or line[1] != "_": #test
+                    #print(line)
+                    continue
+                else:
+                    sentence_word.extend([line[0], line[-1]])
+                    data.append(sentence_word)
+    df = pd.DataFrame(data, columns = ["Sentence #", "Word", "Tag"])
+
+    df.loc[:, "Tag"] = enc_tag.fit_transform(df["Tag"])
+
+    sentences = df.groupby("Sentence #")["Word"].apply(list).values
+    tag = df.groupby("Sentence #")["Tag"].apply(list).values
+    return sentences, tag
 
 
-class EntityDataset:
-    def __init__(self, texts, tags, pos=[]): #(device = "cuda")
-        # texts: [["hi", ",", "my", "name", "is", "abhishek"], ["hello".....]]
-        # pos/tags: [[1 2 3 4 1 5], [....].....]]
-        self.texts = texts
-        self.tags = tags
-        if not config.USING_CONLL:
-            self.pos = pos
+class EntityDataset(Dataset):
+    def __init__(self, path, enc_tag = None):
+        if enc_tag:
+            self.enc_tag = enc_tag
+        else:
+            self.enc_tag = preprocessing.LabelEncoder()
+        self.sentences, self.tags = process_data(path, enc_tag=self.enc_tag)
     
     def __len__(self):
-        return len(self.texts)
+        return len(self.sentences)
     
     def __getitem__(self, item):
-        text = self.texts[item]
+        text = self.sentences[item]
         ids = []
 
         target_tag =[]
         tags = self.tags[item]
-        if not config.USING_CONLL:
-            target_pos = []
-            pos = self.pos[item]
         
         for i, s in enumerate(text):
             inputs = config.TOKENIZER.encode(
@@ -56,3 +81,11 @@ class EntityDataset:
                 "target_tag": torch.tensor(target_tag, dtype=torch.long),
             }
 
+    def get_enc_tag(self):
+        return self.enc_tag
+    
+    def get_sentences(self):
+        return self.sentences
+    
+    def get_tags(self):
+        return self.tags

@@ -2,8 +2,6 @@ import config
 import torch
 import transformers
 import torch.nn as nn
-import sklearn
-from sklearn.metrics import classification_report
 
 def loss_fn(output, target, mask, num_labels):
     lfn = nn.CrossEntropyLoss()
@@ -14,28 +12,20 @@ def loss_fn(output, target, mask, num_labels):
         target.view(-1),
         torch.tensor(lfn.ignore_index).type_as(target)  #-100.0
     )
-    
-    # print("\nloss_function active_labels")
-    # print(active_labels)
-    # print("loss_funtion active_labels shape: " + str(active_labels.shape)) #size 1280???
     loss = lfn(active_logits, active_labels)
     return loss
 
 
 class EntityModel(nn.Module):
-    def __init__(self, num_tag, num_pos = 0):
+    def __init__(self, num_tag):
         super(EntityModel, self).__init__()
         self.num_tag = num_tag
         self.bert = transformers.BertModel.from_pretrained(config.BASE_MODEL_PATH,return_dict=False)
         self.bert_drop_1 = nn.Dropout(0.3)
         self.out_tag = nn.Linear(768, self.num_tag) #768: the hidden size of bert base
-        if not config.USING_CONLL:
-            self.num_pos = num_pos
-            self.bert_drop_2 = nn.Dropout(0.3)
-            self.out_pos = nn.Linear(768, self.num_pos)
     
     #token_type_ids: Sentence embedding: E_A, E_B...
-    def forward(self, ids, mask, token_type_ids, target_tag, target_pos = 0):
+    def forward(self, ids, mask, token_type_ids, target_tag):
         # text = config.TOKENIZER.batch_decode(ids, skip_special_tokens=True)
         # print(text)
         
