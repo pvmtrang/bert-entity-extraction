@@ -44,7 +44,7 @@ if __name__ == "__main__":
     joblib.dump(meta_data, config.META_DATA_PATH)
     
     device = torch.device("cuda")
-    model = EntityModel(num_tag=num_tag_train)
+    model = EntityModel(num_tag=num_tag_train, enc_tag=enc_tag)
     model.to(device)
 
     param_optimizer = list(model.named_parameters())
@@ -70,11 +70,14 @@ if __name__ == "__main__":
         optimizer, num_warmup_steps=0, num_training_steps=num_train_steps
     )
 
-    best_loss = np.inf
+    best_f1 = - np.inf
     for epoch in range(config.EPOCHS):
-        train_loss = engine.train_fn(train_data_loader, model, optimizer, device, scheduler)
-        val_loss = engine.eval_fn(valid_data_loader, model, device)
-        print(f"Train Loss = {train_loss} Valid Loss = {val_loss}")
-        if val_loss < best_loss:
+        print("----Epoch #" + str(epoch))
+        train_loss, train_f1 = engine.train_fn(train_data_loader, model, optimizer, device, scheduler)
+        val_loss, val_f1 = engine.eval_fn(valid_data_loader, model, device)
+        print(f"Train F1 = {train_f1} Train Loss = {train_loss} Valid F1 = {val_f1} Valid Loss = {val_loss}")
+        if val_f1 > best_f1:
+            print("new best model")
             torch.save(model.state_dict(), config.MODEL_PATH)
-            best_loss = val_loss
+            best_f1 = val_f1
+    print("best val_f1: " + str(best_f1))

@@ -28,7 +28,7 @@ def process_data(path, enc_tag): #read into a df and convert it into 2 lists: se
 
     sentences = df.groupby("Sentence #")["Word"].apply(list).values
     tag = df.groupby("Sentence #")["Tag"].apply(list).values
-    return sentences, tag
+    return sentences, tag, enc_tag
 
 
 class EntityDataset(Dataset):
@@ -37,7 +37,7 @@ class EntityDataset(Dataset):
             self.enc_tag = enc_tag
         else:
             self.enc_tag = preprocessing.LabelEncoder()
-        self.sentences, self.tags = process_data(path, enc_tag=self.enc_tag)
+        self.sentences, self.tags, self.enc_tag = process_data(path, enc_tag=self.enc_tag)
     
     def __len__(self):
         return len(self.sentences)
@@ -48,16 +48,19 @@ class EntityDataset(Dataset):
 
         target_tag =[]
         tags = self.tags[item]
+        real_tokenized_len = 0
         
-        for i, s in enumerate(text):
+        for i, s in enumerate(text): #for each word in seq
             inputs = config.TOKENIZER.encode(
                 s,
                 add_special_tokens=False
             )
             # abhishek: ab ##hi ##sh ##ek
             input_len = len(inputs)
+            real_tokenized_len += input_len
             ids.extend(inputs)
             target_tag.extend([tags[i]] * input_len)
+        
 
         ids = ids[:config.MAX_LEN - 2]
         ids = [101] + ids + [102]
@@ -77,8 +80,9 @@ class EntityDataset(Dataset):
         return {
                 "ids": torch.tensor(ids, dtype=torch.long),
                 "mask": torch.tensor(mask, dtype=torch.long),
-                "token_type_ids": torch.tensor(token_type_ids, dtype=torch.long),
+                "token_type_ids": torch.tensor(token_type_ids, dtype=torch.long), #which sentence does this token belong to 
                 "target_tag": torch.tensor(target_tag, dtype=torch.long),
+                "real_tokenized_len": torch.tensor(real_tokenized_len, dtype=torch.long)
             }
 
     def get_enc_tag(self):
@@ -88,4 +92,7 @@ class EntityDataset(Dataset):
         return self.sentences
     
     def get_tags(self):
-        return self.tags
+        target_tag = []
+        for sentence_id in range(len(self.tags)):
+            target_tag.append(self.__getitem__(sentence_id)['target_tag'])
+        return target_tag
