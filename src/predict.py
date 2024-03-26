@@ -37,9 +37,11 @@ if __name__ == "__main__":
             for k, v in data.items():
                 data[k] = v.to(device)
             tokenized_sentence, inverse_true_tag, inverse_pred_tag = model(**data)
+
             tokenized_sentences.extend(tokenized_sentence)
-            inverse_pred_tags.extend(inverse_true_tag)
+            inverse_pred_tags.extend(inverse_pred_tag)
             inverse_true_tags.extend(inverse_true_tag)
     
-    utils.write_to_file(tokenized_sentences, inverse_pred_tags, inverse_pred_tag, output_file_path)
+    
+    utils.write_to_file(tokenized_sentences, inverse_pred_tags, inverse_true_tags, output_file_path)
     conlleval.evaluate_conll_file(output_file_path, verbose=True)

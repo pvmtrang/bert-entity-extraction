@@ -4,7 +4,7 @@ MAX_LEN = 64 #the longest sentence in test, train, dev set is 49 words long
 # reduce batch size because dataset size << original. Original train: 43613 sentences, coner: 15300. orig val: 4796, coner: 800
 TRAIN_BATCH_SIZE = 10 #from 32 -> 10
 VALID_BATCH_SIZE = 3 #from 8 -> 3
-TEST_BATCH_SIZE = 100
+TEST_BATCH_SIZE = 200
 EPOCHS = 30
 BASE_MODEL_PATH = "../input/bert-base-uncased"
 # https://huggingface.co/google-bert/bert-base-uncased
