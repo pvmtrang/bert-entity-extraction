@@ -5,7 +5,6 @@ import joblib
 import torch
 
 from sklearn import preprocessing
-from sklearn import model_selection
 
 from transformers import AdamW
 from transformers import get_linear_schedule_with_warmup
@@ -65,19 +64,21 @@ if __name__ == "__main__":
     ]
 
     num_train_steps = int(train_dataset.__len__() / config.TRAIN_BATCH_SIZE * config.EPOCHS) #hmm, should i use __len__?
-    optimizer = AdamW(optimizer_parameters, lr=3e-5)
+    optimizer = AdamW(optimizer_parameters, lr=3e-6) #original: 3e-5
     scheduler = get_linear_schedule_with_warmup(
         optimizer, num_warmup_steps=0, num_training_steps=num_train_steps
     )
 
+    print(config.CURRENT_BIN_FOLDER)
+
     best_f1 = - np.inf
     for epoch in range(config.EPOCHS):
-        print("----Epoch #" + str(epoch))
-        train_loss, train_f1 = engine.train_fn(train_data_loader, model, optimizer, device, scheduler)
+        print("----Epoch #" + str(epoch + 1))
+        train_loss, train_f1 = engine.train_fn(train_data_loader, model, optimizer, scheduler, device)
         val_loss, val_f1 = engine.eval_fn(valid_data_loader, model, device)
         print(f"Train F1 = {train_f1} Train Loss = {train_loss} Valid F1 = {val_f1} Valid Loss = {val_loss}")
         if val_f1 > best_f1:
             print("new best model")
             torch.save(model.state_dict(), config.MODEL_PATH)
             best_f1 = val_f1
-    print("best val_f1: " + str(best_f1))
+    print("done\nbest val_f1: " + str(best_f1))

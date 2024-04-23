@@ -5,6 +5,5 @@ input/
 *.jpg
 .ipynb_checkpoints
 *.zip
-input/bert-base-uncased
 venv/
 __pycache__/

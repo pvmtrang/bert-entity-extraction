@@ -1,24 +1,42 @@
 import transformers
 
+MODEL_NAME = 'bert'
+# MODEL_NAME = 'xlm-roberta'
+
 MAX_LEN = 64 #the longest sentence in test, train, dev set is 49 words long
-# reduce batch size because dataset size << original. Original train: 43613 sentences, coner: 15300. orig val: 4796, coner: 800
-TRAIN_BATCH_SIZE = 10 #from 32 -> 10
-VALID_BATCH_SIZE = 3 #from 8 -> 3
-TEST_BATCH_SIZE = 200
+TRAIN_BATCH_SIZE = 32 
+VALID_BATCH_SIZE = 8 
+TEST_BATCH_SIZE = 256
 EPOCHS = 30
-BASE_MODEL_PATH = "../input/bert-base-uncased"
+if MODEL_NAME == 'bert':
+    BASE_MODEL_PATH = "../input/model/bert-base-uncased"
+elif MODEL_NAME == 'xlm-roberta':
+    BASE_MODEL_PATH = "../input/model/xlm-roberta-base"
+
+CURRENT_BIN_FOLDER = "bin/coner2022_Apr23_bert_lr3e6/"
 # https://huggingface.co/google-bert/bert-base-uncased
-MODEL_PATH = "bin/coner2022_Mar25/model.bin"
-META_DATA_PATH = "bin/coner2022_Mar25/meta.bin"
-#TRAINING_FILE = "../input/ner_dataset.csv"
-TRAINING_FILE = "../input/multiconer1_2022/EN-English/en_train.conll"
-VALIDATION_FILE = "../input/multiconer1_2022/EN-English/en_dev.conll"
-TEST_FILE = "../input/multiconer1_2022/EN-English/en_test.conll"
+# CURRENT_BIN_FOLDER = "bin/coner2022_Apr20_xlm-roberta/"
+
+MODEL_PATH = CURRENT_BIN_FOLDER + "model.bin"
+META_DATA_PATH = CURRENT_BIN_FOLDER + "meta.bin"
+TRAINING_OUTPUT_FILE = CURRENT_BIN_FOLDER + "train-"
+VALIDATION_OUTPUT_FILE = CURRENT_BIN_FOLDER + "val-"
+VALIDATION_BEST_OUTPUT_FILE = CURRENT_BIN_FOLDER + "val-best-"
+TEST_OUTPUT_FILE = CURRENT_BIN_FOLDER + "test-"
+
+TRAINING_FILE = "../input/data/multicon er1_2022/EN-English/en_train.conll"
+VALIDATION_FILE = "../input/data/multiconer1_2022/EN-English/en_dev.conll"
+TEST_FILE = "../input/data/multiconer1_2022/EN-English/en_test.conll"
 # https://www.kaggle.com/datasets/abhinavwalia95/entity-annotated-corpus?resource=download&select=ner_dataset.csv
 # multiconer 1: aws s3 cp --no-sign-request s3://multiconer/multiconer2022/ multiconer2022/ --recursive
-TOKENIZER = transformers.BertTokenizer.from_pretrained(
-    pretrained_model_name_or_path = BASE_MODEL_PATH,
-    do_lower_case=True
-)
 
-# USING_CONLL = True
+if MODEL_NAME == 'bert': 
+    TOKENIZER = transformers.BertTokenizer.from_pretrained(
+        pretrained_model_name_or_path = BASE_MODEL_PATH,
+        do_lower_case=True
+    )
+elif MODEL_NAME == 'xlm-roberta':    
+    TOKENIZER = transformers.XLMRobertaTokenizer.from_pretrained(
+        pretrained_model_name_or_path=BASE_MODEL_PATH
+    )
+
