@@ -15,6 +15,7 @@ if __name__ == "__main__":
     enc_tag = meta_data["enc_tag"]
     data_file_name = os.path.basename(config.VALIDATION_FILE).split(".")[0] + ".txt"
     output_file_path = config.VALIDATION_OUTPUT_FILE + data_file_name
+    print(output_file_path)
 
     test_dataset = dataset.EntityDataset(config.VALIDATION_FILE, enc_tag)
     num_tag = len(list(enc_tag.classes_))

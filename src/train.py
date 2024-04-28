@@ -64,7 +64,7 @@ if __name__ == "__main__":
     ]
 
     num_train_steps = int(train_dataset.__len__() / config.TRAIN_BATCH_SIZE * config.EPOCHS) #hmm, should i use __len__?
-    optimizer = AdamW(optimizer_parameters, lr=3e-6) #original: 3e-5
+    optimizer = AdamW(optimizer_parameters, lr=3e-5) #original: 3e-5
     scheduler = get_linear_schedule_with_warmup(
         optimizer, num_warmup_steps=0, num_training_steps=num_train_steps
     )
